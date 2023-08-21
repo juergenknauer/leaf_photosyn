@@ -7,7 +7,7 @@ photosyn.constants <- function(){
   list(
     
     R_gas    = 8.314,         # universal gas constant
-    Kelvin   = 273.15,       
+    Kelvin   = 273.15,        # temperature at 0 degC in Kelvin
     Tref     = 25 + 273.15,   # 25 degC in Kelvin
     umol2mol = 1e-06,         # conversion umol to mol
     mol2umol = 1e06,          # conversion mol to umol
@@ -76,9 +76,9 @@ photosyn_params <- function(Ci_based){
       Kc0   = 404.9e-06,  # Michaelis-Menten-constant for C02 at 25?C [mol (CO2) mol-1]
       Ko0   = 278.4e-03,  # Michaelis-Menten-constant for 02 at 25?C [mol (O2) mol-1]
       Gam0  = 42.75e-06,  # Gamma* at 25?C [mol(CO2) mol-1]
-      Ec    = 79430,      # activation energy for Kc [J mol-1]
-      Eo    = 36380,      # activation energy for Ko [J mol-1]
-      Eg    = 37830       # activation energy for Gamma* [J mol-1]
+      Ec    = 79.430,      # activation energy for Kc [J mol-1]
+      Eo    = 36.380,      # activation energy for Ko [J mol-1]
+      Eg    = 37.830       # activation energy for Gamma* [J mol-1]
     )
     
   ### explicit gm (Cc-based)
@@ -88,14 +88,14 @@ photosyn_params <- function(Ci_based){
       Kc0   = 272.38e-06,  # Michaelis-Menten-constant for C02 at 25degC [mol (CO2) mol-1]
       Ko0   = 165.82e-03,  # Michaelis-Menten-constant for 02 at 25degC [mol (O2) mol-1]
       Gam0  = 37.43e-06,   # Gamma* at 25degC [mol(CO2) mol-1]
-      Ec    = 80990,       # activation energy for Kc [J mol-1]
-      Eo    = 23720,       # activation energy for Ko [J mol-1]
-      Eg    = 24460,       # activation energy for Gamma* [J mol-1]
+      Ec    = 80.99,       # activation energy for Kc [kJ mol-1]
+      Eo    = 23.72,       # activation energy for Ko [kJ mol-1]
+      Eg    = 24.46,       # activation energy for Gamma* [kJ mol-1]
       
-      Em     = 49600,       # activation energy for gm [J mol-1]
-      Hdm    = 437400,      # deactivation energy for gm [J mol-1]
-      dSm    = 1400,        # entropy term for gm [J mol-1 K-1]
-      fgmmin = 0.15         # fraction of minimum gm on gmmax25 [-]
+      Em     = 49.6,       # activation energy for gm [kJ mol-1]
+      Hdm    = 437.4,      # deactivation energy for gm [kJ mol-1]
+      dSm    = 1400,       # entropy term for gm [J mol-1 K-1]
+      fgmmin = 0.15        # fraction of minimum gm on gmmax25 [-]
     )
     
   }
@@ -133,13 +133,15 @@ Arrhenius_temp_response <- function(k25, Tleaf, Ha, Hd, dS,
   Tref  <- constants$Tref
   
   Tleaf <- Tleaf + constants$Kelvin
-  Ha    <- Ha * constants$kJ2J
-  Hd    <- Hd * constants$kJ2J
   
   # with acclimation
   if (!is.null(Tgrowth)){
-    Ha <- a_Ha + b_Ha * Tgrowth + c_Ha * Thome + d_Ha * (Tgrowth - Thome)
-    dS <- a_dS + b_dS * Tgrowth + c_dS * Thome + d_dS * (Tgrowth - Thome)
+    Ha <- (a_Ha + b_Ha * Tgrowth + c_Ha * Thome + d_Ha * (Tgrowth - Thome)) * constants$kJ2J
+    dS <- (a_dS + b_dS * Tgrowth + c_dS * Thome + d_dS * (Tgrowth - Thome))
+    Hd <- Hd * constants$kJ2J
+  } else {
+    Ha    <- Ha * constants$kJ2J
+    Hd    <- Hd * constants$kJ2J
   }
   
   kTl = k25 * exp(Ha * (Tleaf - Tref)/(Tref * R_gas * Tleaf)) * 
@@ -234,25 +236,25 @@ lightinhib_Rd <- function(PPDF){
 # -------------------------------------------------------------------------------- #
 ####################################################################################
 
-photosyn <- function(Tair = 25,        # air temperature (degC)
-                     Pressure = 101,   # atmospheric pressure (kPa)
-                     rH = NULL,        # relative humidity (-); only needed if gs_model == "Ball&Berry"
-                     VPD = 1.5,        # vapour pressure deficit (kPa)
-                     Ca = 410,         # atmospheric CO2 concentration (umol mol-1)
-                     PPFD = 1500,      # photosynthetically active photon flux density (umol m-2 s-1)
-                     Vcmax25 = 50.0,   # (Ci-based) maximum carboxylation rate (umol m-2 s-1)
-                     Jmax25 = 90.0,    # (Ci-based) maximum electron transport rate (umol m-2 s-1)
-                     g0 = 0.005,       # 
-                     g1 = 3.4,         #
-                     explicit_gm = TRUE,   # explicit gm considered?
-                     temp_acclim = TRUE,   # thermal acclimation considered? 
-                     gm25   = 0.2,   
-                     beta_s = 1.0,      # soil water stress scalar for stomatal conductance (0-1)
-                     beta_m = 1.0,      # soil water stress scalar for mesophyll conductance (0-1)
-                     beta_b = 1.0,      # soil water stress scalar for Jmax and Vcmax (0-1)
-                     Tgrowth = NULL,    # growth temperature (degC)
-                     Thome = NULL,      # home temperature (degC)
-                     gs_model=c("Ball&Berry","USO"),  # stomatal conductance model
+photosyn <- function(Tair = 25,           # air temperature (degC)
+                     Pressure = 101,      # atmospheric pressure (kPa)
+                     rH = NULL,           # relative humidity (-); only needed if gs_model == "Ball&Berry"
+                     VPD = 1.5,           # vapour pressure deficit (kPa)
+                     Ca = 410,            # atmospheric CO2 concentration (umol mol-1)
+                     PPFD = 1500,         # photosynthetically active photon flux density (umol m-2 s-1)
+                     Vcmax25 = 50.0,      # (Ci-based) maximum carboxylation rate (umol m-2 s-1)
+                     Jmax25 = 90.0,       # (Ci-based) maximum electron transport rate (umol m-2 s-1)
+                     g0 = 0.005,          # residual stomatal conductance (mol m-2 s-1)
+                     g1 = 3.4,            # stomatal slope parameter (kPa^0.5)
+                     explicit_gm = TRUE,  # explicit gm considered?
+                     temp_acclim = TRUE,  # thermal acclimation considered? 
+                     gm25   = 0.2,        # mesophyll conductance at 25 degC
+                     beta_s = 1.0,        # soil water stress scalar for stomatal conductance (0-1)
+                     beta_m = 1.0,        # soil water stress scalar for mesophyll conductance (0-1)
+                     beta_b = 1.0,        # soil water stress scalar for Jmax and Vcmax (0-1)
+                     Tgrowth = NULL,      # growth temperature (degC)
+                     Thome = NULL,        # home temperature (degC)
+                     gs_model=c("USO","Ball&Berry"),  # stomatal conductance model
                      constants=photosyn.constants()){
   
   gs_model  <- match.arg(gs_model)
@@ -260,8 +262,6 @@ photosyn <- function(Tair = 25,        # air temperature (degC)
   params <- photosyn_params(Ci_based=!explicit_gm)
   sapply(1:length(params),function(x) assign(names(params[x]),params[[x]],pos=sys.frame(-3)))
   sapply(1:length(constants),function(x) assign(names(constants[x]),constants[[x]],pos=sys.frame(-4)))
-  #attach(params,warn.conflicts = TRUE)
-  #attach(constants,warn.conflicts = TRUE)
   
   if (temp_acclim & is.null(Tgrowth)){
     stop("argument Tgrowth must be provided if temp_acclim = TRUE!")
@@ -272,7 +272,6 @@ photosyn <- function(Tair = 25,        # air temperature (degC)
   met <- data.frame(cbind(Tair,Ca,Pressure,PPFD,VPD,rH))
   ts  <- nrow(met)
   sapply(1:ncol(met),function(x) assign(colnames(met)[x],met[,x],pos=sys.frame(-3)))
-
 
   if (explicit_gm){
     exp_params <- gm.param.conversion(Ci=seq(0,1500,1),Vcmax25=Vcmax25,Jmax25=Jmax25,
@@ -286,15 +285,15 @@ photosyn <- function(Tair = 25,        # air temperature (degC)
     Vcmax25_ci <- Vcmax25
   }
 
+  
+  
   ## unit conversions
   Tleaf      <- Tair
   TleafK     <- Tleaf + Kelvin
-  Vcmax25_ci <- Vcmax25_ci * umol2mol    
-  Vcmax25    <- Vcmax25    * umol2mol
-  Jmax25     <- Jmax25     * umol2mol
   PPFD       <- PPFD       * umol2mol
   Ca         <- Ca         * umol2mol
   Pressure   <- Pressure   * kPa2Pa
+  Vcmax25_ci <- Vcmax25_ci * umol2mol
   
 
   ## create vectors of length ts
@@ -326,9 +325,12 @@ photosyn <- function(Tair = 25,        # air temperature (degC)
       Vcmax[i] <- Arrhenius_temp_response(Vcmax25,Tleaf[i],Ev,Hd,dSv)
       Jmax[i]  <- Arrhenius_temp_response(Jmax25,Tleaf[i],Ej,Hd,dSj)
     }
-  
-    Vcmax[i] <- Vcmax[i] * beta_b
-    Jmax[i]  <- Jmax[i] * beta_b
+    
+   
+    # apply water stress scalar and convert rates to right unit
+    Vcmax[i] <- Vcmax[i] * beta_b * umol2mol
+    Jmax[i]  <- Jmax[i] * beta_b * umol2mol
+    
     
     ## electron transport rate
     APAR_PSII[i] <- PPFD[i] * (1 - fl) / 2  # absorbed PPFD by photosystem II
@@ -346,10 +348,10 @@ photosyn <- function(Tair = 25,        # air temperature (degC)
       gm[i] <- max(c(fgmmin * gm25), gm[i])
     }
   
-
-    ## calculate Photosynthesis, stomatal conductance, intercellular and chloroplastic CO2 concentration
-    ## and others for each input step.
     
+    ## calculate Photosynthesis, stomatal conductance, intercellular and chloroplastic CO2 concentration
+    ## and others for each input step. Find a solution for those through iteration.
+
     while (abs(Diff) > CcDiffMax & !is.na(Diff) & nit < nit_max){
       
       Je[i] <- J1[i] * (Cc[i] - Gam[i])/4/(Cc[i] + 2*Gam[i])
